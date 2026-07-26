@@ -1,5 +1,6 @@
 import { useState } from "react";
 import DamageReport from "./DamageReport";
+import { saveToHistory } from "../utils/historyService";
 
 export default function UploadSection() {
   const [image, setImage] = useState(null);
@@ -35,6 +36,8 @@ export default function UploadSection() {
 
       const data = await response.json();
       setAnalysisResult(data);
+
+      saveToHistory(data);
     } catch (error) {
       console.error("Error analyzing image:", error);
       alert("Failed to connect to Backend Server!");
