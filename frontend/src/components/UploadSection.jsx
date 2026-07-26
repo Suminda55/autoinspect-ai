@@ -1,8 +1,9 @@
 import { useState } from "react";
+import DamageReport from "./DamageReport";
 
 export default function UploadSection() {
   const [image, setImage] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
 
@@ -16,23 +17,27 @@ export default function UploadSection() {
   };
 
   const handleAnalyze = async () => {
-    if(!selectedFile) return;
+    if (!selectedFile) return;
 
     setLoading(true);
     const formData = new FormData();
     formData.append("file", selectedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/api/analyze", {
+      const response = await fetch("http://127.0.0.1:8000/api/analyze", {
         method: "POST",
         body: formData,
       });
 
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
       const data = await response.json();
-      setAnalysisResult(data); 
+      setAnalysisResult(data);
     } catch (error) {
       console.error("Error analyzing image:", error);
-      alert("Failed to connect to Backend Server! Check if FastAPI is running.");
+      alert("Failed to connect to Backend Server!");
     } finally {
       setLoading(false);
     }
@@ -49,7 +54,7 @@ export default function UploadSection() {
         {image ? (
           <div className="flex flex-col items-center space-y-4">
             <img src={image} alt="Uploaded Car" className="max-h-64 rounded-xl shadow-lg border border-slate-600" />
-            <button 
+            <button
               onClick={() => {
                 setImage(null);
                 setSelectedFile(null);
@@ -71,7 +76,7 @@ export default function UploadSection() {
       </div>
 
       {/* Action Button */}
-      {image && !analysisResult &&(
+      {image && !analysisResult && (
         <button
           onClick={handleAnalyze}
           disabled={loading}
@@ -80,20 +85,9 @@ export default function UploadSection() {
           {loading ? "Connecting to Backend AI... 🤖" : "Analyze Damage 🚀"}
         </button>
       )}
-      {/*displaying backend recieved result */}
-      {analysisResult && (
-        <div className="mt-8 p-6 bg-slate-800 border border-blue-500/30 rounded-2xl text-left shadow-xl animate-fade-in">
-          <h3 className="text-xl font-bold text-green-400 mb-4 flex items-center gap-2">
-            ✅ AI Analysis Result Received!
-          </h3>
-          <div className="space-y-2 text-slate-300">
-            <p><strong className="text-white">File Name:</strong> {analysisResult.filename}</p>
-            <p><strong className="text-white">Detected Damage:</strong> <span className="text-amber-400 font-semibold">{analysisResult.detected_damage}</span></p>
-            <p><strong className="text-white">Severity:</strong> {analysisResult.severity}</p>
-            <p><strong className="text-white">Estimated Cost:</strong> <span className="text-green-400 font-bold">{analysisResult.estimated_cost}</span></p>
-          </div>
-        </div>
-      )}
+
+      {/* Clean Component Rendering */}
+      {analysisResult && <DamageReport result={analysisResult} />}
     </section>
   );
 }
