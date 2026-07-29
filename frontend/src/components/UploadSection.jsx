@@ -2,7 +2,7 @@ import { useState } from "react";
 import DamageReport from "./DamageReport";
 import { saveToHistory } from "../utils/historyService";
 
-export default function UploadSection() {
+export default function UploadSection({ onAnalysisComplete }) {
   const [image, setImage] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,29 +18,46 @@ export default function UploadSection() {
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      alert("කරුණාකර Photo එකක් තෝරන්න!");
+      return;
+    }
 
     setLoading(true);
-    const formData = new FormData();
-    formData.append("file", selectedFile);
 
     try {
+      const formData = new FormData();
+      const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9.]/g, "_");
+      const renamedFile = new File([selectedFile], safeFileName, { type: selectedFile.type });
+
+      formData.append("file", renamedFile);
+
       const response = await fetch("http://127.0.0.1:8000/api/analyze", {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Server status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("Analysis Result:", data);
+
       setAnalysisResult(data);
 
-      saveToHistory(data);
+      if (typeof saveToHistory === "function") {
+        saveToHistory(data);
+      }
+
+      if (onAnalysisComplete) {
+        onAnalysisComplete(data);
+      }
+
     } catch (error) {
-      console.error("Error analyzing image:", error);
-      alert("Failed to connect to Backend Server!");
+      console.error("Upload error:", error);
+      alert(error.message || "Image processing failed!");
     } finally {
       setLoading(false);
     }
@@ -52,7 +69,6 @@ export default function UploadSection() {
         Upload Vehicle Image for <span className="text-blue-500">AI Inspection</span>
       </h2>
 
-      {/* Upload Box */}
       <div className="border-2 border-dashed border-slate-700 bg-slate-800/50 p-8 rounded-2xl flex flex-col items-center justify-center min-h-[250px]">
         {image ? (
           <div className="flex flex-col items-center space-y-4">
@@ -63,7 +79,7 @@ export default function UploadSection() {
                 setSelectedFile(null);
                 setAnalysisResult(null);
               }}
-              className="text-red-400 hover:text-red-300 text-sm font-semibold underline"
+              className="text-red-400 hover:text-red-300 text-sm font-semibold underline cursor-pointer"
             >
               Remove Image
             </button>
@@ -78,18 +94,16 @@ export default function UploadSection() {
         )}
       </div>
 
-      {/* Action Button */}
       {image && !analysisResult && (
         <button
           onClick={handleAnalyze}
           disabled={loading}
-          className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold text-lg transition shadow-lg"
+          className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold text-lg transition shadow-lg cursor-pointer"
         >
           {loading ? "Connecting to Backend AI... 🤖" : "Analyze Damage 🚀"}
         </button>
       )}
 
-      {/* Clean Component Rendering */}
       {analysisResult && <DamageReport result={analysisResult} />}
     </section>
   );

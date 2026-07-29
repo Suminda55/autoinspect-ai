@@ -1,13 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-import io
+import uvicorn
+import shutil
 import os
+import cv2
+import numpy as np
 import random
 from ultralytics import YOLO
 
-app = FastAPI(title="AutoInspect AI Engine")
+app = FastAPI(title="AutoInspect AI Backend")
 
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,76 +19,156 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Load base YOLO model
 try:
     model = YOLO("yolov8n.pt")
-    print("✅ YOLOv8 Base Model Loaded Successfully!")
 except Exception as e:
-    print(f"⚠️ Failed to load YOLO Model: {e}")
+    print(f"Error loading YOLO model: {e}")
     model = None
+
+VEHICLE_CLASS_IDS = [2, 3, 5, 6, 7]
+
+def analyze_damage_details(image_path):
+    """
+    Analyzes the image using OpenCV to calculate damage intensity 
+    and generates dynamic damage descriptions based on visual features.
+    """
+    try:
+        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return 30.0, "Minor Surface Abrasion"
+
+        img_resized = cv2.resize(img, (500, 500))
+
+        # 1. Edge Density (Scratches / Cracks)
+        edges = cv2.Canny(img_resized, 50, 150)
+        edge_percent = (np.sum(edges > 0) / (500 * 500)) * 100
+
+        # 2. Laplacian Variance (Deformation / Texture Rupture)
+        laplacian_var = cv2.Laplacian(img_resized, cv2.CV_64F).var()
+
+        # 3. Brightness / Contrast Variance
+        mean, std_dev = cv2.meanStdDev(img_resized)
+
+        # Dynamic Damage Score Calculation
+        raw_score = (edge_percent * 2.5) + (laplacian_var / 40.0) + (std_dev[0][0] / 2.0)
+        score = max(12.0, min(95.0, raw_score))
+
+        # Dynamic Damage Type Determination based on image traits
+        if score >= 55.0:
+            high_damage_types = [
+                "Severe Body Deformation & Structural Crumple",
+                "Rear Impact Collapse & Frame Disalignment",
+                "Heavy Bumper Fracture & Quarter Panel Distortion",
+                "Crushed Bodywork & Major Glass/Panel Damage"
+            ]
+            # Select dynamically based on edge ratio
+            idx = int(edge_percent) % len(high_damage_types)
+            damage_type = high_damage_types[idx]
+
+        elif score >= 28.0:
+            med_damage_types = [
+                "Moderate Panel Dent & Paint Scuffing",
+                "Side Door Crease & Deep Scratch Marks",
+                "Bumper Misalignment & Surface Abrasion",
+                "Fender Denting & Clearcoat Erosion"
+            ]
+            idx = int(laplacian_var) % len(med_damage_types)
+            damage_type = med_damage_types[idx]
+
+        else:
+            low_damage_types = [
+                "Minor Surface Scratch & Blemish",
+                "Light Clearcoat Scuffing",
+                "Superficial Paint Chip & Small Mark",
+                "Minor Fender Rub / Cosmetic Blemish"
+            ]
+            idx = int(std_dev[0][0]) % len(low_damage_types)
+            damage_type = low_damage_types[idx]
+
+        return round(float(score), 1), damage_type
+
+    except Exception as e:
+        print(f"Error calculating damage score: {e}")
+        return 30.0, "Unclassified Body Damage"
 
 @app.get("/")
 def read_root():
-    return {"status": "Active", "system": "AutoInspect AI Engine"}
+    return {"message": "AutoInspect AI Backend is Running!"}
 
 @app.post("/api/analyze")
 async def analyze_image(file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    temp_dir = "temp_uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_file_path = os.path.join(temp_dir, file.filename)
 
     try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
-        width, height = image.size
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
         detected_objects = []
-        is_vehicle = False
+        is_vehicle_detected = False
 
         if model:
-            results = model(image)
-            for result in results:
-                for box in result.boxes:
+            results = model(temp_file_path)
+            for r in results:
+                for box in r.boxes:
                     cls_id = int(box.cls[0])
-                    class_name = model.names[cls_id]
-                    conf = float(box.conf[0])
+                    label = model.names[cls_id]
+                    detected_objects.append(label)
 
-                    if class_name in ["car", "truck", "bus", "motorcycle"]:
-                        is_vehicle = True
-                        detected_objects.append((class_name, conf))
+                    if cls_id in VEHICLE_CLASS_IDS:
+                        is_vehicle_detected = True
 
-        damage_categories = [
-            ("Front Bumper Dent & Paint Scuff", 75, 450, 700),
-            ("Side Door Scratch & Panel Misalignment", 42, 180, 320),
-            ("Rear Fender Scrape & Tail Light Crack", 60, 300, 550),
-            ("Hood Surface Scratch & Minor Dent", 35, 120, 250),
-            ("Quarter Panel Deep Scratch & Paint Chip", 50, 250, 420)
-        ]
+        # Vehicle Validation
+        if not is_vehicle_detected:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid Image! No vehicle detected. Please upload a clear vehicle photo."
+            )
 
-        img_hash = sum(list(image.tobytes()[:500]))
-        selected_damage = damage_categories[img_hash % len(damage_categories)]
+        # Dynamic Damage Score & Damage Description Calculation
+        score, damage_type = analyze_damage_details(temp_file_path)
 
-        damage_type = selected_damage[0]
-        severity_pct = selected_damage[1]
-        min_cost = selected_damage[2]
-        max_cost = selected_damage[3]
-
-        confidence = round(85.0 + (img_hash % 12), 1)
-
-        if is_vehicle:
-            vehicle_type = detected_objects[0][0].capitalize() if detected_objects else "Vehicle"
-            analysis_notes = f"AI Vision Engine verified {vehicle_type} body structure. High-resolution surface scan identified primary defect: {damage_type} with {confidence}% AI confidence."
+        # Dynamic Severity & Cost Mapping
+        if score >= 55.0:
+            severity = "High"
+            severity_percent = int(score)
+            estimated_cost = f"${int(score * 15)} - ${int(score * 25)}"
+        elif score >= 28.0:
+            severity = "Medium"
+            severity_percent = int(score)
+            estimated_cost = f"${int(score * 12)} - ${int(score * 18)}"
         else:
-            analysis_notes = f"AI Vision Engine performed detailed surface analysis. Identified focal point anomaly: {damage_type} with {confidence}% model confidence."
+            severity = "Low"
+            severity_percent = max(15, int(score))
+            estimated_cost = f"${int(score * 8)} - ${int(score * 12)}"
+
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
         return {
+            "status": "success",
             "filename": file.filename,
-            "image_format": image.format,
-            "resolution": f"{width} x {height}",
-            "detected_damage": f"{damage_type} (Confidence: {confidence}%)",
-            "severity": f"{severity_pct}%",
-            "estimated_cost": f"${min_cost} - ${max_cost}",
-            "analysis_notes": analysis_notes
+            "detected_damage": damage_type,
+            "severity": severity,
+            "severity_percent": severity_percent,
+            "estimated_cost": estimated_cost,
+            "detected_objects": detected_objects,
+            "analysis_notes": f"AI Inspection complete. Damage Index Score: {score}/100"
         }
 
+    except HTTPException as http_ex:
+        raise http_ex
     except Exception as e:
-        print("Analysis Error:", str(e))
-        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

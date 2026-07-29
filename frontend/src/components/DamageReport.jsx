@@ -10,13 +10,11 @@ export default function DamageReport({ result }) {
     if (!element) return;
 
     try {
-      // html2canvas parse කරද්දී oklch crash වීම වැළැක්වීමට options
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#1e293b",
         onclone: (clonedDoc) => {
-          // cloned element එකේ oklch styles තිබුණොත් ewa clean කිරීමට safe fallback
           const clonedElement = clonedDoc.querySelector("[data-pdf-container]");
           if (clonedElement) {
             clonedElement.style.backgroundColor = "#1e293b";
@@ -43,9 +41,19 @@ export default function DamageReport({ result }) {
     }
   };
 
+  // Severity indicator color mapping
+  const getSeverityColor = (sev) => {
+    if (sev === "High") return "#ef4444";
+    if (sev === "Medium") return "#f59e0b";
+    return "#10b981";
+  };
+
+  const progressWidth = result.severity_percent ? `${result.severity_percent}%` : 
+                        result.severity === "High" ? "85%" : 
+                        result.severity === "Medium" ? "50%" : "25%";
+
   return (
     <div className="mt-8">
-      {/* PDF Capture Box with Standard Hex/RGB Styles */}
       <div
         ref={reportRef}
         data-pdf-container="true"
@@ -76,29 +84,24 @@ export default function DamageReport({ result }) {
             <strong style={{ color: "#ffffff" }}>File Name:</strong> {result.filename}
           </p>
 
-          {result.resolution && (
-            <p>
-              <strong style={{ color: "#ffffff" }}>Resolution:</strong>{" "}
-              <span style={{ color: "#22d3ee" }} className="font-mono">{result.resolution}</span> ({result.image_format})
-            </p>
-          )}
-
           <p>
             <strong style={{ color: "#ffffff" }}>Detected Damage:</strong>{" "}
             <span style={{ color: "#fbbf24" }} className="font-semibold">{result.detected_damage}</span>
           </p>
 
-          {/* Visual Severity Progress Gauge */}
+          {/* Dynamic Progress Bar */}
           <div>
             <div className="flex justify-between text-sm mb-1">
               <strong style={{ color: "#ffffff" }}>Damage Severity:</strong>
-              <span style={{ color: "#fbbf24" }} className="font-bold">{result.severity}</span>
+              <span style={{ color: getSeverityColor(result.severity) }} className="font-bold">
+                {result.severity} ({progressWidth})
+              </span>
             </div>
             <div style={{ backgroundColor: "#334155" }} className="w-full h-3 rounded-full overflow-hidden">
               <div
                 style={{
-                  width: result.severity,
-                  background: "linear-gradient(to right, #eab308, #ef4444)",
+                  width: progressWidth,
+                  backgroundColor: getSeverityColor(result.severity),
                 }}
                 className="h-full rounded-full transition-all duration-1000"
               ></div>
@@ -121,11 +124,10 @@ export default function DamageReport({ result }) {
         </div>
       </div>
 
-      {/* Download Button */}
       <button
         onClick={handleDownloadPDF}
         style={{ backgroundColor: "#059669" }}
-        className="mt-4 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition shadow-lg flex items-center gap-2 mx-auto active:scale-95"
+        className="mt-4 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition shadow-lg flex items-center gap-2 mx-auto active:scale-95 cursor-pointer"
       >
         📄 Download Official PDF Report
       </button>

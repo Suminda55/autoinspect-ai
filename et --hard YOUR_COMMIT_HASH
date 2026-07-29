@@ -1,0 +1,11 @@
+[33mafe7573[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Comlplete Smart AI Analysis pipline integration
+[33mdb4be75[m Integrate base YOLOv8 model and resolve multipart upload dependencies
+[33m65343ad[m Implement LocalStorage History Log with real-time UI sync and can be downloaded history back also
+[33m9628119[m Day 8: Implement PDF Report Generation & Severity Gauge Component
+[33md8262a3[m Day 7: Real AI Image Processing Integration
+[33mb57e13f[m Integrate Pillow Image Processing Logic in FastAPI Backend
+[33mf0f6a1f[m Connect React Frontend with FastAPI Backend for AI Inspection
+[33m2531ce3[m Add Image Upload and A Analysis Preview features
+[33m34da36e[m Build Home Page with React components and interractive buttons
+[33m4639880[m Setup React frontend with Tailwind v4
+[33m4e4fcd8[m Initial project structure
