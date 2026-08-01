@@ -22,10 +22,8 @@ export default function HistoryLog() {
     }
   };
 
-  // History Item එකෙන් Direct PDF Generate කරන Function එක
   const handleDownloadItemPDF = async (item) => {
     try {
-      // Hidden Temp Element එකක් හදලා PDF එක generate කරමු
       const tempContainer = document.createElement("div");
       tempContainer.style.position = "absolute";
       tempContainer.style.left = "-9999px";
@@ -125,7 +123,6 @@ export default function HistoryLog() {
                 ></div>
               </div>
 
-              {/*  History download button*/}
               <button
                 onClick={() => handleDownloadItemPDF(item)}
                 className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 text-xs px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1 shrink-0"

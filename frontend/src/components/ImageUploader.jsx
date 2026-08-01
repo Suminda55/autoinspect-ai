@@ -26,7 +26,6 @@ export default function ImageUploader({ onAnalyze, isLoading }) {
     }
 
     if (onAnalyze) {
-      // Parent එකේ handleAnalyze function එකට File එක pass කරනවා
       onAnalyze(selectedFile);
     } else {
       console.error("onAnalyze prop is missing in ImageUploader!");

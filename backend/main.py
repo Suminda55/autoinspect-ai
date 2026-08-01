@@ -3,14 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import shutil
 import os
-import cv2
-import numpy as np
-import random
 from ultralytics import YOLO
+from damage_detector import analyze_and_annotate_damage
 
 app = FastAPI(title="AutoInspect AI Backend")
 
-# CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load base YOLO model
 try:
     model = YOLO("yolov8n.pt")
 except Exception as e:
@@ -27,71 +23,6 @@ except Exception as e:
     model = None
 
 VEHICLE_CLASS_IDS = [2, 3, 5, 6, 7]
-
-def analyze_damage_details(image_path):
-    """
-    Analyzes the image using OpenCV to calculate damage intensity 
-    and generates dynamic damage descriptions based on visual features.
-    """
-    try:
-        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            return 30.0, "Minor Surface Abrasion"
-
-        img_resized = cv2.resize(img, (500, 500))
-
-        # 1. Edge Density (Scratches / Cracks)
-        edges = cv2.Canny(img_resized, 50, 150)
-        edge_percent = (np.sum(edges > 0) / (500 * 500)) * 100
-
-        # 2. Laplacian Variance (Deformation / Texture Rupture)
-        laplacian_var = cv2.Laplacian(img_resized, cv2.CV_64F).var()
-
-        # 3. Brightness / Contrast Variance
-        mean, std_dev = cv2.meanStdDev(img_resized)
-
-        # Dynamic Damage Score Calculation
-        raw_score = (edge_percent * 2.5) + (laplacian_var / 40.0) + (std_dev[0][0] / 2.0)
-        score = max(12.0, min(95.0, raw_score))
-
-        # Dynamic Damage Type Determination based on image traits
-        if score >= 55.0:
-            high_damage_types = [
-                "Severe Body Deformation & Structural Crumple",
-                "Rear Impact Collapse & Frame Disalignment",
-                "Heavy Bumper Fracture & Quarter Panel Distortion",
-                "Crushed Bodywork & Major Glass/Panel Damage"
-            ]
-            # Select dynamically based on edge ratio
-            idx = int(edge_percent) % len(high_damage_types)
-            damage_type = high_damage_types[idx]
-
-        elif score >= 28.0:
-            med_damage_types = [
-                "Moderate Panel Dent & Paint Scuffing",
-                "Side Door Crease & Deep Scratch Marks",
-                "Bumper Misalignment & Surface Abrasion",
-                "Fender Denting & Clearcoat Erosion"
-            ]
-            idx = int(laplacian_var) % len(med_damage_types)
-            damage_type = med_damage_types[idx]
-
-        else:
-            low_damage_types = [
-                "Minor Surface Scratch & Blemish",
-                "Light Clearcoat Scuffing",
-                "Superficial Paint Chip & Small Mark",
-                "Minor Fender Rub / Cosmetic Blemish"
-            ]
-            idx = int(std_dev[0][0]) % len(low_damage_types)
-            damage_type = low_damage_types[idx]
-
-        return round(float(score), 1), damage_type
-
-    except Exception as e:
-        print(f"Error calculating damage score: {e}")
-        return 30.0, "Unclassified Body Damage"
-
 @app.get("/")
 def read_root():
     return {"message": "AutoInspect AI Backend is Running!"}
@@ -111,9 +42,11 @@ async def analyze_image(file: UploadFile = File(...)):
 
         detected_objects = []
         is_vehicle_detected = False
+        car_box_coords = None
 
         if model:
             results = model(temp_file_path)
+            max_area = 0
             for r in results:
                 for box in r.boxes:
                     cls_id = int(box.cls[0])
@@ -122,8 +55,12 @@ async def analyze_image(file: UploadFile = File(...)):
 
                     if cls_id in VEHICLE_CLASS_IDS:
                         is_vehicle_detected = True
-
-        # Vehicle Validation
+                        coords = box.xyxy[0].tolist()
+                        bx1, by1, bx2, by2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
+                        area = (bx2 - bx1) * (by2 - by1)
+                        if area > max_area:
+                            max_area = area
+                            car_box_coords = [bx1, by1, bx2, by2]
         if not is_vehicle_detected:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
@@ -132,22 +69,30 @@ async def analyze_image(file: UploadFile = File(...)):
                 detail="Invalid Image! No vehicle detected. Please upload a clear vehicle photo."
             )
 
-        # Dynamic Damage Score & Damage Description Calculation
-        score, damage_type = analyze_damage_details(temp_file_path)
+        analysis_result = analyze_and_annotate_damage(temp_file_path, car_box=car_box_coords)
 
-        # Dynamic Severity & Cost Mapping
-        if score >= 55.0:
+        if len(analysis_result) == 5:
+            score, damage_type, annotated_image, analysis_notes, bounding_boxes = analysis_result
+        elif len(analysis_result) == 4:
+            score, damage_type, annotated_image, analysis_notes = analysis_result
+            bounding_boxes = []
+        else:
+            score, damage_type, annotated_image = analysis_result
+            analysis_notes = "Assessment complete. Results are approximate and should be verified manually."
+            bounding_boxes = []
+
+        if score >= 70.0:
             severity = "High"
-            severity_percent = int(score)
-            estimated_cost = f"${int(score * 15)} - ${int(score * 25)}"
-        elif score >= 28.0:
+            severity_percent = int(round(score))
+            estimated_cost = f"${int(score * 18)} - ${int(score * 30)}"
+        elif score >= 35.0:
             severity = "Medium"
-            severity_percent = int(score)
-            estimated_cost = f"${int(score * 12)} - ${int(score * 18)}"
+            severity_percent = int(round(score))
+            estimated_cost = f"${int(score * 10)} - ${int(score * 18)}"
         else:
             severity = "Low"
-            severity_percent = max(15, int(score))
-            estimated_cost = f"${int(score * 8)} - ${int(score * 12)}"
+            severity_percent = max(0, int(round(score)))
+            estimated_cost = "$0 - $250"
 
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
@@ -160,7 +105,9 @@ async def analyze_image(file: UploadFile = File(...)):
             "severity_percent": severity_percent,
             "estimated_cost": estimated_cost,
             "detected_objects": detected_objects,
-            "analysis_notes": f"AI Inspection complete. Damage Index Score: {score}/100"
+            "annotated_image": annotated_image,
+            "bounding_boxes": bounding_boxes,
+            "analysis_notes": f"{analysis_notes} Damage Index Score: {score}/100"
         }
 
     except HTTPException as http_ex:

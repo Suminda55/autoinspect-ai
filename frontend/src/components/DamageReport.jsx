@@ -41,7 +41,6 @@ export default function DamageReport({ result }) {
     }
   };
 
-  // Severity indicator color mapping
   const getSeverityColor = (sev) => {
     if (sev === "High") return "#ef4444";
     if (sev === "Medium") return "#f59e0b";
@@ -64,14 +63,14 @@ export default function DamageReport({ result }) {
         }}
         className="p-6 border rounded-2xl text-left shadow-xl animate-fade-in"
       >
-        <div 
+        <div
           style={{ borderColor: "#334155" }}
           className="flex justify-between items-center mb-4 border-b pb-3"
         >
           <h3 style={{ color: "#4ade80" }} className="text-xl font-bold flex items-center gap-2">
             ✅ AI Damage Inspection Report
           </h3>
-          <span 
+          <span
             style={{ backgroundColor: "#0f172a", borderColor: "#334155", color: "#94a3b8" }}
             className="text-xs px-3 py-1 rounded-full border"
           >
@@ -84,12 +83,26 @@ export default function DamageReport({ result }) {
             <strong style={{ color: "#ffffff" }}>File Name:</strong> {result.filename}
           </p>
 
+          {result.annotated_image && (
+            <div className="my-4">
+              <p className="text-xs text-slate-400 mb-2 font-semibold flex items-center gap-1">
+                🔍 AI Detected Damage Zone:
+              </p>
+              <img
+                src={result.annotated_image}
+                alt="AI Damage Detection Bounding Box"
+                className="w-full max-h-80 object-contain rounded-xl border border-red-500/40 shadow-lg"
+              />
+            </div>
+          )}
+
           <p>
             <strong style={{ color: "#ffffff" }}>Detected Damage:</strong>{" "}
-            <span style={{ color: "#fbbf24" }} className="font-semibold">{result.detected_damage}</span>
+            <span style={{ color: "#fbbf24" }} className="font-semibold">
+              {result.detected_damage}
+            </span>
           </p>
 
-          {/* Dynamic Progress Bar */}
           <div>
             <div className="flex justify-between text-sm mb-1">
               <strong style={{ color: "#ffffff" }}>Damage Severity:</strong>
@@ -110,11 +123,13 @@ export default function DamageReport({ result }) {
 
           <p>
             <strong style={{ color: "#ffffff" }}>Estimated Repair Cost:</strong>{" "}
-            <span style={{ color: "#4ade80" }} className="font-bold text-lg">{result.estimated_cost}</span>
+            <span style={{ color: "#4ade80" }} className="font-bold text-lg">
+              {result.estimated_cost}
+            </span>
           </p>
 
           {result.analysis_notes && (
-            <p 
+            <p
               style={{ color: "#94a3b8", borderColor: "#334155" }}
               className="text-xs mt-2 border-t pt-2 font-mono"
             >

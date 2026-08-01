@@ -2,3 +2,8 @@ fastapi
 uvicorn
 python-multipart
 pillow
+numpy
+opencv-python
+ultralytics
+groq
+pillow-heif
