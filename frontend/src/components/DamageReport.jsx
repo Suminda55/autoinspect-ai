@@ -1,8 +1,10 @@
-import { useRef } from "react";
+import React, { useState, useRef } from 'react';
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
+import EmailModal from './EmailModal';
 
 export default function DamageReport({ result }) {
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const reportRef = useRef();
 
   const handleDownloadPDF = async () => {
@@ -146,6 +148,27 @@ export default function DamageReport({ result }) {
       >
         📄 Download Official PDF Report
       </button>
+<div className="flex flex-wrap gap-3 justify-center mt-6">
+  <button 
+    onClick={handleDownloadPDF}
+    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors"
+  >
+    📄 Download Official PDF Report
+  </button>
+
+  <button
+    onClick={() => setIsEmailModalOpen(true)}
+    className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors">
+      📩 Send via Email
+    </button>
+  </div>
+
+  <EmailModal 
+    isOpen={isEmailModalOpen} 
+    onClose={() => setIsEmailModalOpen(false)} 
+    reportData={result}
+  />
+      
     </div>
   );
 }
