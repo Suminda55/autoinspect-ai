@@ -141,34 +141,27 @@ export default function DamageReport({ result }) {
         </div>
       </div>
 
-      <button
-        onClick={handleDownloadPDF}
-        style={{ backgroundColor: "#059669" }}
-        className="mt-4 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition shadow-lg flex items-center gap-2 mx-auto active:scale-95 cursor-pointer"
-      >
-        📄 Download Official PDF Report
-      </button>
-<div className="flex flex-wrap gap-3 justify-center mt-6">
-  <button 
-    onClick={handleDownloadPDF}
-    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors"
-  >
-    📄 Download Official PDF Report
-  </button>
+      <div className="flex flex-wrap gap-3 justify-center mt-6">
+        <button 
+          onClick={handleDownloadPDF}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+        >
+          📄 Download Official PDF Report
+        </button>
 
-  <button
-    onClick={() => setIsEmailModalOpen(true)}
-    className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors">
-      📩 Send via Email
-    </button>
-  </div>
+        <button
+          onClick={() => setIsEmailModalOpen(true)}
+          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+        >
+          📩 Send via Email
+        </button>
+      </div>
 
-  <EmailModal 
-    isOpen={isEmailModalOpen} 
-    onClose={() => setIsEmailModalOpen(false)} 
-    reportData={result}
-  />
-      
+      <EmailModal 
+        isOpen={isEmailModalOpen} 
+        onClose={() => setIsEmailModalOpen(false)} 
+        reportData={result}
+      />
     </div>
   );
 }

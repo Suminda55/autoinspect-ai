@@ -40,12 +40,12 @@ export default function HistoryLog() {
           <span style="font-size: 10px; color: #94a3b8; background: #0f172a; padding: 4px 8px; border-radius: 12px; border: 1px solid #334155;">AutoInspect AI</span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
-          <p><strong style="color: #ffffff;">Date:</strong> ${item.date}</p>
-          <p><strong style="color: #ffffff;">File Name:</strong> ${item.filename}</p>
+          <p><strong style="color: #ffffff;">Date:</strong> ${item.date || "N/A"}</p>
+          <p><strong style="color: #ffffff;">File Name:</strong> ${item.filename || "inspection"}</p>
           ${item.resolution ? `<p><strong style="color: #ffffff;">Resolution:</strong> <span style="color: #22d3ee;">${item.resolution}</span> (${item.image_format})</p>` : ""}
-          <p><strong style="color: #ffffff;">Detected Damage:</strong> <span style="color: #fbbf24;">${item.detected_damage}</span></p>
-          <p><strong style="color: #ffffff;">Damage Severity:</strong> <span style="color: #fbbf24;">${item.severity}</span></p>
-          <p><strong style="color: #ffffff;">Estimated Repair Cost:</strong> <span style="color: #4ade80; font-weight: bold;">${item.estimated_cost}</span></p>
+          <p><strong style="color: #ffffff;">Detected Damage:</strong> <span style="color: #fbbf24;">${item.detected_damage || "N/A"}</span></p>
+          <p><strong style="color: #ffffff;">Damage Severity:</strong> <span style="color: #fbbf24;">${item.severity || "N/A"}</span></p>
+          <p><strong style="color: #ffffff;">Estimated Repair Cost:</strong> <span style="color: #4ade80; font-weight: bold;">${item.estimated_cost || "N/A"}</span></p>
           ${item.analysis_notes ? `<p style="color: #94a3b8; font-size: 11px; border-top: 1px solid #334155; padding-top: 8px;">ℹ️ ${item.analysis_notes}</p>` : ""}
         </div>
       `;
@@ -89,26 +89,26 @@ export default function HistoryLog() {
         </h3>
         <button
           onClick={handleClear}
-          className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg transition"
+          className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg transition cursor-pointer"
         >
           Clear History
         </button>
       </div>
 
       <div className="grid gap-4">
-        {history.map((item) => (
+        {history.map((item, index) => (
           <div
-            key={item.id}
+            key={item.id || index}
             className="p-5 bg-slate-800/80 border border-slate-700 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-md hover:border-slate-600 transition"
           >
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-cyan-400">{item.date}</span>
+                <span className="text-xs font-mono text-cyan-400">{item.date || "Today"}</span>
                 <span className="text-xs bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
-                  {item.filename}
+                  {item.filename || "inspection"}
                 </span>
               </div>
-              <h4 className="font-semibold text-amber-400">{item.detected_damage}</h4>
+              <h4 className="font-semibold text-amber-400">{item.detected_damage || "Damage Detected"}</h4>
               <p className="text-xs text-slate-400">
                 Severity: <span className="text-white font-bold">{item.severity}</span> | Cost:{" "}
                 <span className="text-green-400 font-bold">{item.estimated_cost}</span>
@@ -116,16 +116,9 @@ export default function HistoryLog() {
             </div>
 
             <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-              <div className="w-24 bg-slate-700 h-2 rounded-full overflow-hidden hidden sm:block">
-                <div
-                  className="bg-gradient-to-r from-yellow-500 to-red-500 h-full"
-                  style={{ width: item.severity }}
-                ></div>
-              </div>
-
               <button
                 onClick={() => handleDownloadItemPDF(item)}
-                className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 text-xs px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1 shrink-0"
+                className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 text-xs px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1 shrink-0 cursor-pointer"
               >
                 📄 PDF
               </button>
