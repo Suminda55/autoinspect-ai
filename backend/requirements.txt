@@ -4,3 +4,6 @@ groq
 python-multipart
 pydantic
 python-dotenv
+pillow
+opencv-python-headless
+numpy
