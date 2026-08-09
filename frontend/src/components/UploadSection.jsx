@@ -32,10 +32,9 @@ export default function UploadSection({ onAnalysisComplete }) {
 
       formData.append("file", renamedFile);
 
-      // ✅ Live Production Backend URL එක direct ලෙස මෙතැනට දැම්මා
-      const BACKEND_URL = "https://autoinspect-api.vercel.app";
+      const backendUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-      const response = await fetch(`${BACKEND_URL}/api/analyze`, {
+      const response = await fetch(`${backendUrl}/api/analyze`, {
         method: "POST",
         body: formData,
       });
