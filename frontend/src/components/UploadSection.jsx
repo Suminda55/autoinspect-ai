@@ -32,7 +32,9 @@ export default function UploadSection({ onAnalysisComplete }) {
 
       formData.append("file", renamedFile);
 
-      const response = await fetch("/api/analyze", {
+      const backendUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+      const response = await fetch(`${backendUrl}/api/analyze`, {
         method: "POST",
         body: formData,
       });
