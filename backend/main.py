@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import shutil
 import os
-from ultralytics import YOLO
+import tempfile
 from damage_detector import analyze_and_annotate_damage
 
 app = FastAPI(title="AutoInspect AI Backend")
@@ -17,12 +17,14 @@ app.add_middleware(
 )
 
 try:
+    from ultralytics import YOLO
     model = YOLO("yolov8n.pt")
 except Exception as e:
-    print(f"Error loading YOLO model: {e}")
+    print(f"YOLO model not loaded (Running in Cloud/Vercel mode): {e}")
     model = None
 
 VEHICLE_CLASS_IDS = [2, 3, 5, 6, 7]
+
 @app.get("/")
 def read_root():
     return {"message": "AutoInspect AI Backend is Running!"}
@@ -32,8 +34,7 @@ async def analyze_image(file: UploadFile = File(...)):
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
-    temp_dir = "temp_uploads"
-    os.makedirs(temp_dir, exist_ok=True)
+    temp_dir = tempfile.gettempdir()
     temp_file_path = os.path.join(temp_dir, file.filename)
 
     try:
@@ -61,13 +62,16 @@ async def analyze_image(file: UploadFile = File(...)):
                         if area > max_area:
                             max_area = area
                             car_box_coords = [bx1, by1, bx2, by2]
-        if not is_vehicle_detected:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid Image! No vehicle detected. Please upload a clear vehicle photo."
-            )
+            
+            if not is_vehicle_detected:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid Image! No vehicle detected. Please upload a clear vehicle photo."
+                )
+        else:
+            is_vehicle_detected = True
 
         analysis_result = analyze_and_annotate_damage(temp_file_path, car_box=car_box_coords)
 
@@ -119,4 +123,3 @@ async def analyze_image(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
-    app=app
