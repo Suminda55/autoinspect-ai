@@ -66,7 +66,7 @@ export default function UploadSection({ onAnalysisComplete }) {
   };
 
   return (
-    <section className="px-8 py-12 max-w-4xl mx-auto text-center">
+    <section id="upload-section" className="px-8 py-12 max-w-4xl mx-auto text-center">
       <h2 className="text-3xl font-bold text-white mb-6">
         Upload Vehicle Image for <span className="text-blue-500">AI Inspection</span>
       </h2>
